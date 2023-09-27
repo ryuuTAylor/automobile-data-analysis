@@ -1,0 +1,255 @@
+---
+title: "Team_Project"
+author: "Taylor Wang, Ava Zhang, Joseph Henri Dionne"
+net ids: "tw492, wbz3, jhd88"
+date: "3/9/2023"
+output:
+  html_document: default
+  pdf_document: default
+editor_options:
+  chunk_output_type: inline
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### Motivation for Our Question
+The COVID-19 Pandemic affected nearly every facet of daily life from testing the durability of healthcare networks and supply chains around the world to altering how and where we live and work. However, COVID-19’s impact has potentially been the most pronounced. The global economy contracted by 3.1% in 2020 compared to the 2.9% growth experienced in 2019 according to the American Enterprise Institute, putting global profit losses in the billions of dollars. This begs the question how has Tesla, an electric vehicle manufacturer which heavily relies on the global supply chain, performed in Pre-COVID, COVID, and Post-COVID periods? Answering this question will shed light on the effects of a global health crisis on a global manufacturer while providing other companies insight into how to successfully grow while navigating the complicated challenges of a global shutdown as a result of a global pandemic. 
+
+### Introduction: Analysis of the economic trend of different companies throughout COVID-19
+COVID-19 has no doubt influenced the entire world significantly and fundamentally in terms of social and economical development. This project aims at analyzing the economic trend of different companies throughout COVID-19 with focus on some specific companies. We aim to quantify the influences brought by COVID-19 by examining the performance of companies in terms of their closing prices.
+
+After carefully looking into the background information, we decided to use the Adjusted Closing prices, along with some other indicators, in horizontal comparison.
+
+### Background Information (Cite from https://www.investopedia.com)
+The closing price is the raw price or cash value of the last transacted price in a security before the market officially closes for normal trading. The closing price is considered the most accurate valuation of a stock or other security until trading resumes on the next trading day. The closing price on one day can be compared to the closing price on the previous day, 30 days earlier or a year earlier, to measure the changes in market sentiment toward that stock.
+
+The closing price of any company's stock will not usually reflect any news released by the company that day. Major company announcements related to earnings, stock splits, reverse stock splits, and stock dividends are typically released after the close of the regular trading day in order to give traders a chance to digest the news before acting upon it.
+
+Tesla, Inc. is a pioneering American electric vehicle and clean energy company that has revolutionized the automotive industry. With its cutting-edge technology, market leadership in electric vehicles, focus on sustainable energy solutions, and impressive financial performance, analyzing Tesla's performance during the COVID-19 period provides valuable insights into its resilience, adaptability, the impact of the pandemic on the automotive industry, and the growing demand for electric vehicles.
+
+### Libraries
+```{r}
+library(conflicted)
+conflict_prefer("filter", "dplyr")
+conflict_prefer("lag", "dplyr")
+library(tidyverse)
+library(ggplot2)
+```
+
+### Part I: Is Tesla different?
+
+### We are going to conduct a multivariate analysis with the below variables:
+treatment (X): number of days / months (numerical)
+
+outcome (Y): adj.close (numerical)
+
+### Summarizationa and Visualization
+Summarization: calculate correlation adj.closing price and days/months(measuring time period);
+quantify adj.closing price trend by calculating and permuting daily increase rate
+
+Visualization: line graphs, barplot
+
+### Uncertainty Measurement
+t-test, permutation test
+
+### Tesla's sudden performance change
+```{r}
+TSLA_entire <- read.csv("TSLA_entire.csv", header = TRUE)
+TSLA_recent <- read.csv("TSLA_recent.csv", header = TRUE)
+
+which(is.na(TSLA_entire))
+which(is.na(TSLA_recent))
+
+par(mfrow = c(1, 2))
+plot(TSLA_entire$Adj.Close, type = "l", xlab = "number of months after 2010-01-28", ylim = c(0, 400), ylab = "Tesla Adj.Close", main = "Entire Tesla on a monthly basis")
+abline(v = 110, lwd = 2, col = 'red')
+plot(TSLA_recent$Adj.Close, type = "l", xlab = "number of days after 2019-03-17", ylab = "Tesla Adj.Close", main = "Recent Tesla on a daily basis")
+par(mfrow = c(1, 1))
+```
+
+### Analysis
+The line graphs above take into account the trends of Adj. Closing Price of TSLA stock across the lifespan of the company to visualize the overall growth of the company. The red line in the graph on the left represents the beginning of COVID and the graph on the right shows TSLA Adj. CLosing Price since the beginning of COVID. These graphs show a dramatic increase of TSLA's Adj Closing Price taking place approximately 200 days from the start of the COVID-19 Pandemic. 
+	
+### Data Set Introduction
+Our group chose the data set from yahoo.com, and below is the code to import the data set.
+```{r}
+TSLA <- read.csv("TSLA.csv", header = TRUE)
+TM <- read.csv("TM.csv", header = TRUE)
+
+head(TSLA)
+head(TM)
+```
+### Clean the data sets to get rid of missing data, unrelated data, and outliers.
+```{r}
+which(is.na(TSLA))
+which(is.na(TM))
+```
+### Draw out the graph
+```{r}
+par(mfrow = c(1, 2))
+plot(TSLA$Adj.Close, type = "l", xlab = "number of months after 2019-04-01", ylim = c(0, 400), ylab = "Tesla Adj.Close", main = "Tesla on a monthly basis")
+abline(v = 110, lwd = 2, col = 'red')
+plot(TM$Adj.Close, type = "l", xlab = "number of months after 2019-04-01",ylim = c(0, 400), ylab = "Tesla Adj.Close", main = "TM on a monthly basis")
+par(mfrow = c(1, 1))
+```
+
+### Analysis
+These graphs show that while TSLA's Adj. Closing Price was generally higher than TM's since April, 2019, TSLA's Adj. Closing Price was much more unstable than TM's was over the same period. However, TSLA's Adj. Closing Price began a steep decline 110 days later and would last for roughly 60 days before beginning to recover. 
+  
+### Clean out columns and add two variables DailyInc and DailyIncRate
+```{r}
+Inc = rep(0, 50)  
+IncRate = rep(0, 50)
+for(i in 1:49){
+  Inc[i+1] = TSLA$Adj.Close[i+1] - TSLA$Adj.Close[i]
+  IncRate[i+1] = Inc[i+1] / TSLA$Adj.Close[i]
+}
+TSLA_new <- TSLA %>% select(c(Date, Volume, Adj.Close)) %>% mutate(DailyInc = Inc, DailyIncRate = IncRate)
+TSLA_new <- TSLA_new[-1,]
+
+Inc = rep(0, 50)  
+IncRate = rep(0, 50)
+for(i in 1:49){
+  Inc[i+1] = TM$Adj.Close[i+1] - TM$Adj.Close[i]
+  IncRate[i+1] = Inc[i+1] / TM$Adj.Close[i]
+}
+TM_new <- TM %>% select(c(Date, Volume, Adj.Close)) %>% mutate(DailyInc = Inc, DailyIncRate = IncRate)
+TM_new <- TM_new[-1,]
+
+head(TSLA_new)
+head(TM_new)
+```
+### Comparing TSLA and Toyota: Hypothesis
+
+H0: Tesla stock prices increase rate is the same as that of other traditional companies (Toyota) during COVID
+
+Ha: Tesla stock prices increase rate is significantly different from that of other traditional companies (Toyota) during COVID
+
+### Summary Statistics
+```{r}
+daily_inc_diff <- sum(TSLA_new$DailyInc) - sum(TM_new$DailyInc)
+daily_inc_rate_diff <- sum(TSLA_new$DailyIncRate) - sum(TM_new$DailyIncRate)
+daily_inc_diff
+daily_inc_rate_diff
+
+mean_diff <- mean(TSLA_new$DailyIncRate) - mean(TM_new$DailyIncRate)
+mean_diff
+
+summary(TSLA_new$DailyIncRate)
+summary(TM_new$DailyIncRate)
+```
+### Conducting a Permutation Test
+```{r}
+set.seed(1)
+obs_stat <- mean(TSLA_new$DailyIncRate) - mean(TM_new$DailyIncRate)
+combined <- c(TSLA_new$DailyIncRate, TM_new$DailyIncRate)
+
+P = 10000
+store_mean_diff = rep(0, P)
+
+for (n in 1:P){
+  perm <- sample(combined, length(combined), replace = FALSE)
+  store_mean_diff[n] = mean(perm[1:49]) - mean(perm[50:98])
+}
+
+p_val_perm <- mean(abs(store_mean_diff) >= abs(obs_stat))
+p_val_perm
+
+hist(store_mean_diff, breaks = 20, freq = FALSE, col = 'black', border = 'white',
+     xlab = 'Mean Diff of DailyIncRate between TSLA and TM',
+     main = 'Histogram of mean DailyIncRate Diff (Permuted Data)')
+abline(v = obs_stat, col = "blue", lwd = 3)
+```
+
+### Analysis
+At 5% significance level, a p-value of 0.0395 means that if the Null hypothesis was true, the probability that the difference in mean daily increase rate of TSLA and TM are due to pure chance is 3.95%. Thus, the data provides sufficient evidence to reject the null hypothesis in favor of the alternative hypothesis that: the trends of Tesla and Toyota stock prices differ significantly. 
+
+### Conducting a T-test
+```{r}
+t.test(TSLA_new$DailyIncRate, TM_new$DailyIncRate, paired = FALSE)
+```
+We are 95% confident that the population median daily increase rate difference between Tesla and Toyota is between 0.23 and 13.88. At 5% significance level, the p-value is 0.042 < 0.05, which tells us that this is statistically significant.
+
+### Part II: Tesla in COVID
+
+### We are going to conduct a multivariate analysis with the below variables:
+treatment (X): volume (numerical)
+
+outcome (Y): adj.close (numerical)
+
+confounder (Z): covid status (categorical)
+
+### Summarization and Visualization
+Summarization: calculate correlation between volume and adj.close separately for before, during and after COVID
+
+Visualization: scatterplot of volume and adj.close, color-coded by covid.
+
+### Uncertainty Measurement
+t-test, permutation test; R-square of regression coefficients.
+
+### Introduce new variable
+```{r}
+#create new DailyInc and DailyIncRate variables
+Inc = rep(0, 1008)  
+IncRate = rep(0, 1008)
+for(i in 1:1007){
+  Inc[i+1] = TSLA_recent$Adj.Close[i+1] - TSLA_recent$Adj.Close[i]
+  IncRate[i+1] = Inc[i+1] / TSLA_recent$Adj.Close[i]
+}
+TSLA_recent_new <- TSLA_recent %>% select(c(Date, Volume, Adj.Close)) %>% mutate(DailyInc = Inc, DailyIncRate = IncRate) 
+TSLA_recent_new <- TSLA_recent_new[-1,]
+
+#create a new COVID variable
+TSLA_recent_new$Date = as.Date(TSLA_recent_new$Date)
+TSLA_recent_new$COVID <- ifelse(TSLA_recent_new$Date >= as.Date("2019-03-17") & 
+                                TSLA_recent_new$Date <= as.Date("2019-12-12"), "Pre-COVID",
+                                ifelse(TSLA_recent_new$Date >= as.Date("2019-12-13") & 
+                                       TSLA_recent_new$Date <= as.Date("2022-09-01"), "COVID", "Post-COVID"))
+```
+### Advanced Analysis: modeling Adj.Close against Volume, visualizing using scatterplot color-coded by COVID
+```{r}
+# run linear regression on Adj.Close against Volume, separated by COVID
+library(dplyr)
+library(broom)
+TSLA_recent_new %>% 
+  group_by(COVID) %>% 
+  do(model = lm(Adj.Close ~ Volume, data = .)) %>% 
+  summarize(period = COVID, 
+            coefficient = coef(model)[2], 
+            intercept = coef(model)[1], 
+            r_squared = summary(model)$r.squared)
+```
+### Analysis
+If volume represents the degree that Tesla's stock is changing hands, signaling investor's interest in the stock, then examining volume's correlation to adj. closing price is worthwhile. 
+
+We first attempted to model the correlation by running linear regression on Adj.Close against Volume, separated by COVID. The resulting linear regression coefficient indicates a very weak correlation for all three time period. The Pre-COVID period data is especially not accurately accessed with a 0.01 R_squared.Therefore we decided that linear model may not be a good fit for this dataset.
+```{r}
+#adding regression lines to the plot
+ggplot(TSLA_recent_new, aes(x = Volume, y = Adj.Close, color = COVID)) +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  labs(title = "Scatterplot of Tesla's Adj. Close and Volume", 
+       x = "Volume", 
+       y = "Adj. Close", 
+       color = "COVID") +
+  scale_color_manual(values = c("#FF4136", "#0074D9", "#2ECC40")) +
+  theme_minimal()
+```
+
+### Analysis
+We then ran a non-linear regression model and visualized by adding curves to a color coded scatterplot.
+
+The Pre-COVID period indicates that the adjusted closing price wasn't really affected by Tesla's volume prior to the COVID-19 Pandemic. However, with the exception of some outliers, the adj. closing price and volume increased drastically in the COVID and Post-COVID periods, although these trends are difficult to assess over time through this graph. 
+```{r}
+ggplot(TSLA_recent_new, aes(x = Date, y = Volume, color = COVID)) + 
+  geom_point() + 
+  labs(x = "Year", y = "Volume") + 
+  ggtitle("Tesla Volume During Different Covid Periods")+
+  scale_color_manual(values = c("#FF4136", "#0074D9", "#2ECC40")) +
+  theme_minimal()
+```
+
+### Analysis 
+We can observe COVID's effect on Volume by examining volume over time. In this color-coded scatter plot, we see that TSLA's volume in the Pre-COVID was generally unstable, but became extremely unstable as adj. closing price and volume fluctuated from 2020 into 2021. However, volume became much more stable in the second half of the COVID period. The beginning of the post-COVID period also shows a stable increase in the volume of TSLA stock.
+
+Taking what we know from our analysis of TSLA Adj. Closing and Volume, the initial frenzy of COVID caused instability in Tesla's stock's Volume and Adj. Closing Price, but this trend stabilized as the COVID period progressed and volume has stabilized while Adj. Closing Price has dramatically increased in the post-COVID period.
